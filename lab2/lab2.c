@@ -1,62 +1,117 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
-#include <omp.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/wait.h>
 
-const int NumRectangles = 10;
+void print_shared(double *mem, int size);
+void get_proc_and_op(int argc, char *argv[], int *count_of_proc, long *count_of_op);
+double part_of_pi(long start, long end);
+double parrallel_calculate(double *SHARED, int count_of_proc, long proc_op_count, long count_of_op);
 
-int main() {
+int main(int argc, char *argv[])
+{
+	int count_of_proc = 1;
+	long count_of_op = 1000000000, proc_op_count = 0;
+	get_proc_and_op(argc, argv, &count_of_proc, &count_of_op);
+	printf("count of proccess: %d\n", count_of_proc);
+	printf("count of operations: %ld\n", count_of_op);
+	proc_op_count = count_of_op / count_of_proc;
 
-	/* We want a variable for the width of each rectangle. The total width is 1
-	 * because we are working with a quarter unit circle. */
-	float width = 1.0 / NumRectangles;
-
-	/* We want a variable for the x-coordinate at which each rectangle intersects
-	 * the unit circle */
-	float x;
-
-	/* We want a variable for the height of each rectangle */
-	float height;
-
-	/* We want a variable to keep a running total of the area of the rectangles */
-	float area = 0.0;
-
-	/* We want a variable for the computed value of pi */
-	float pi;
-
-	/* We want a variable to loop through the rectangles */
-	int i;
-
-	/* We want to loop over each of the rectangles and run the same code for
-	 * each */
-	#pragma omp parallel for private(x, i, height) reduction(+:area)
+	double *SHARED;
+	int shm_id;
+	shm_id = shmget( IPC_PRIVATE, count_of_proc*sizeof(double), 0666 | IPC_CREAT | IPC_EXCL );
+	SHARED = (double *)shmat(shm_id, NULL, 0);
+	for(int i=0; i<count_of_proc; i++)
 	{
-		for (i = 0; i < NumRectangles; i++) {
-			printf("My thread ID is %d\n", omp_get_thread_num());
-			/* We want to calculate the x-coordinate where the rectangle intersects the
-			 * circle by counting how many rectangle widths the rectangle is away from
-			 * the origin */
-			x = i * width;
+		SHARED[i] = 0;
+	}
 
-			/* We want to use the x^2 + y^2 = r^2 equation to calculate the height of
-			 * the rectangle, which is where the rectangle intersects the circle (y).
-			 * Because the circle is a unit circle, r = 1. */
-			height = sqrt(1.0 - x * x);
+	double pi = parrallel_calculate(SHARED, count_of_proc, proc_op_count, count_of_op);
+	printf("pi number: %.12lf\nmath.pi:   %.12lf\ndiff: %.3e\n", pi, M_PI, fabs(pi-M_PI));
+	shmctl(shm_id, IPC_RMID, NULL);
+	return 0;
+}
 
-			/* We want to compute the area of the rectangle and add it to our running
-			 * total */
-			area += width * height;
-
+double parrallel_calculate(double *SHARED, int count_of_proc, long proc_op_count, long count_of_op)
+{
+	for (int i = 0; i < count_of_proc; i++)
+	{
+		pid_t pid = fork();
+		if(pid < 0)
+		{
+			exit(EXIT_FAILURE);
+		}
+		else if (pid > 0)
+		{
+			continue;
+		}
+		else {
+			double intermediate_val = 0;
+			if(i + 1 == count_of_proc)
+			{
+				intermediate_val = part_of_pi(i*proc_op_count + 1, count_of_op + 1);
+			}
+			else{
+				intermediate_val = part_of_pi(i*proc_op_count + 1, (i + 1)*proc_op_count + 1);
+			}
+			SHARED[i] = intermediate_val;
+			exit(EXIT_SUCCESS);
 		}
 	}
-	/* We are ready to compute pi. We need to multiply by 4 because we have found
-	 * the area under only 1/4 of the unit circle. We don't need to multiply by
-	 * radius squared, because the unit circle has a radius of 1. */
-	pi = 4.0 * area;
 
-	/* We want to print the final result */
-	printf("%f\n", pi);
+	for (int i = 0; i < count_of_proc; i++)
+	{
+		int status;
+		// pid_t pid = 
+		wait(&status); // kids could be ready in any order
+	}
+	double pi = 0;
+	for(int i=0; i < count_of_proc; i++)
+	{
+		pi += SHARED[i];
+	}
+	return pi;
+}
 
-	/* We want to indicate the program has finished successfully using the Unix
-	 * standard value for success */
-	return 0;
+
+void print_shared(double *mem, int size)
+{
+	for(int i=0; i<size; i++)
+		printf("SH[i] = %.2lf, ", mem[i]);
+	printf("\n");
+}
+
+void get_proc_and_op(int argc, char *argv[], int *count_of_proc, long *count_of_op)
+{
+	int tmp_cop = 0;
+	long tmp_coo = 0;
+	if (argc > 2)
+	{
+		tmp_cop = atoi(argv[1]);
+		tmp_coo = atol(argv[2]);
+		if (tmp_cop && tmp_coo)
+		{
+			*count_of_proc = tmp_cop;
+			*count_of_op = tmp_coo;
+		}
+		else
+			printf("use defaul values\n");
+	}
+}
+
+double part_of_pi(long start, long end)
+{
+	double num = 0;
+	for(long i=start; i<2*end; i += 2)
+	{
+		if ((i-1)/2%2)
+			num -= 4.0/i;
+		else
+			num += 4.0/i;
+	}
+	return num;
 }

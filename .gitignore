@@ -1,6 +1,7 @@
 task*
 *.out
 *.pdf
+*.txt
 lectures/
 # Prerequisites
 *.d
