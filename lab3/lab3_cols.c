@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <time.h>
 #include <sys/types.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
@@ -88,10 +89,12 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		else {
 			if (i != count_of_proc-1 ){
 				multiply(SHARED, i*cols_for_proc, (i+1)*cols_for_proc, size, i);
+				printf("range: %d %d\n", i*cols_for_proc, (i+1)*cols_for_proc);
 			}
 			else
 			{
 				multiply(SHARED, i*cols_for_proc, size, size, i);
+				printf("range: %d %d\n", i*cols_for_proc, size);
 			}
 			exit(EXIT_SUCCESS);
 		}
@@ -102,8 +105,11 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		int status;
 		wait(&status);
 	}
+	double end = omp_get_wtime();
 	int res_vec_shift = size*(size+1);
 	int tmp_vecs_shift = res_vec_shift + size;
+	printf("time of parrallel multiply: %lf\n", end-start);
+	start = omp_get_wtime();
 	for(int i=0; i<size; i++)
 	{
 		for(int j=0; j<count_of_proc; j++)
@@ -111,7 +117,8 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 			SHARED[res_vec_shift + i] += SHARED[tmp_vecs_shift + j*size + i];
 		}
 	}
-	printf("end of calculatoins\ntime of parrallel calculate: %lf\n", omp_get_wtime()-start);
+	end = omp_get_wtime();
+	printf("time of sum calculatoins: %lf\nend of calculatoins\n", end-start);
 }
 
 void multiply(int *SHARED, int start_col, int last_col, int size, int num_of_proc)
