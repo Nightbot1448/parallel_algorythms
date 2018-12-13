@@ -1,3 +1,6 @@
+// compile: gcc lab4.c -Wall -fopenmp -pthread -o task
+// run:		./task 30000000
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,7 +8,7 @@
 #include <pthread.h>
 #include <time.h>
 #include <omp.h>
-
+	
 typedef struct infoForThread
 {
 	int id;
@@ -19,35 +22,29 @@ void consistent_calc(int *arr, int len);
 void parallel_calc(int *arr, int len);
 void *thread_task_qs(void *info);
 void *thread_task_ces(void *info);
+int *compare_exchange(int *arr1, int len1, int *arr2, int len2);
+int check_sorted(int *arr, int len);
+void parse_len(int argc, char *argv[], int *len);
 
-
-int main()
+int main(int argc, char *argv[])
 {
 	srand(time(NULL));
-	int len = 100;
+	int len = 10000000;
+	parse_len(argc, argv, &len);
 	int *arr_for_parrallel = (int *)malloc(len*sizeof(int));
-	// int *arr_for_consistent = (int *)malloc(len*sizeof(int));
+	int *arr_for_consistent = (int *)malloc(len*sizeof(int));
+	printf("generating and cloning array\n");
 	for(int i=0; i<len; i++)
 	{
 		arr_for_parrallel[i] = rand()%301-150;
-		// arr_for_consistent[i] = arr_for_parrallel[i];
 	}
-	// consistent_calc(arr_for_consistent, len);
-	// printf("END START ARR\n\n");
+	memcpy(arr_for_consistent, arr_for_parrallel, len*sizeof(int));
+	printf("consistent calculating\n");
+	consistent_calc(arr_for_consistent, len);
+	printf("parallel calculating\n");
 	parallel_calc(arr_for_parrallel, len);
-	for(int i=0; i < 4; i++)
-	{
-		if(i != 3)
-			for(int j = i*len/4; j< (i+1)*len/4; j++)
-				printf("%d ", arr_for_parrallel[j]);
-		else
-			for(int j = i*len/4; j< len; j++)
-				printf("%d ", arr_for_parrallel[j]);
-		printf("\n");
-	}
-
 	free(arr_for_parrallel);
-	// free(arr_for_consistent);
+	free(arr_for_consistent);
 	return 0;
 }
 
@@ -80,7 +77,9 @@ void consistent_calc(int *arr, int len)
 {	
 	double time = omp_get_wtime();
 	qs(arr, 0, len-1);
-	printf("time %lf\n", omp_get_wtime()-time);
+	printf("\tconsistent time: %lf\n", omp_get_wtime()-time);
+	if (!check_sorted(arr, len))
+		printf("\nALARM!!!\nconsistent not sorted\n");
 }
 
 
@@ -116,9 +115,6 @@ int *compare_exchange(int *arr1, int len1, int *arr2, int len2)
 		}
 		count++;
 	}
-	// for(int i=0; i<len1+len2; i++)
-	// 	printf("%d ", res_arr[i]);
-	// printf("\n");
 	return res_arr;
 }
 
@@ -134,19 +130,8 @@ void *thread_task_ces(void *info)
 	}
 	else
 	{
-		// printf("\n\nthis case\n%d %d\nfirst arr:\n",len, parsed.len-3*len);
-		// for(int i=(parsed.id-1)*len; i<(parsed.id)*len; i++)
-			// printf("%d ", parsed.arr[i]);
-		// printf("\nsecond arr:\n");
-		// for(int i=(parsed.id)*len; i<parsed.len; i++)
-			// printf("%d ", parsed.arr[i]);
-		// printf("\n\n");
 		res_arr = compare_exchange(parsed.arr+(parsed.id-1)*len, len, parsed.arr+parsed.id*len, parsed.len-3*len);
-		// for(int i=0; i < parsed.len - len*2; i++)
-			// printf("%d ", res_arr[i]);
-		// printf("\n^^^res_arr^^^\n\n\n");
 		memcpy(parsed.arr+(parsed.id-1)*len, res_arr, (parsed.len - len*2)*sizeof(int));
-		// memcpy(parsed.arr+parsed.id*len, (void *)res_arr+len*sizeof(int), parsed.len-3*len);
 	}
 	free(res_arr);
 	return NULL;
@@ -155,6 +140,7 @@ void *thread_task_ces(void *info)
 
 void parallel_calc(int *arr, int len)
 {
+	double time = omp_get_wtime();
 	pthread_t threads[4];
 	for(int i=0; i<4; i++)
 	{
@@ -168,28 +154,6 @@ void parallel_calc(int *arr, int len)
 	{
 		pthread_join(threads[i], NULL);
 	}
-		// printf("START ARR\n");
-		// for(int i=0; i < 4; i++)
-		// {
-		// 	if(i != 3)
-		// 		for(int j = i*len/4; j< (i+1)*len/4; j++)
-		// 			printf("%d ", arr[j]);
-		// 	else
-		// 		for(int j = i*len/4; j< len; j++)
-		// 			printf("%d ", arr[j]);
-		// 	printf("\n");
-		// }
-	// for(int i=0; i < 4; i++)
-	// {
-	// 	if(i != 3)
-	// 		for(int j = i*len/4; j< (i+1)*len/4; j++)
-	// 			printf("%d ", arr[j]);
-	// 	else
-	// 		for(int j = i*len/4; j< len; j++)
-	// 			printf("%d ", arr[j]);
-	// 	printf("\n");
-	// }
-	// printf("\n\n");
 	for(int i=0; i<4; i++)
 	{
 		if(i % 2)
@@ -205,21 +169,9 @@ void parallel_calc(int *arr, int len)
 			}
 			for(int j=1; j<4; j+=2)
 				pthread_join(threads[j], NULL);
-				// pthread_join(threads[0], NULL);
 		}
 		else
 		{
-	// for(int i=0; i < 4; i++)
-	// {
-	// 	if(i != 3)
-	// 		for(int j = i*len/4; j< (i+1)*len/4; j++)
-	// 			printf("%d ", arr[j]);
-	// 	else
-	// 		for(int j = i*len/4; j< len; j++)
-	// 			printf("%d ", arr[j]);
-	// 	printf("\n");
-	// }
-	// printf("\n\n");
 			for(int j=2; j<4; j+=2)//да, всего 1 итерация
 			{
 				infoForThread *info = (infoForThread *)malloc(sizeof(infoForThread));
@@ -232,4 +184,24 @@ void parallel_calc(int *arr, int len)
 				pthread_join(threads[j], NULL);
 		}
 	}
+	printf("\tparallel time:   %lf\n", omp_get_wtime()-time);
+	if (!check_sorted(arr, len))
+		printf("\nALARM!!!\nparallel not sorted\n");
+}
+
+int check_sorted(int *arr, int len)
+{
+	for(int i=0; i<len-1; i++)
+	{
+		if(arr[i]>arr[i+1])
+			return 0;
+	}
+	return 1;
+}
+
+void parse_len(int argc, char *argv[], int *len)
+{
+	if (argc > 1)
+		*len = atoi(argv[1]);
+	printf("len of arrs: %d\n", *len);
 }
