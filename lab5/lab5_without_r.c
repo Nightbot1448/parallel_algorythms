@@ -22,7 +22,8 @@ int main(int argc, char const *argv[]) {
 	#pragma omp parallel shared(pi_num) private(tmp)
     {
         #pragma omp for private(x)
-        for (i=0; i < steps; i++) {
+        for (i=0; i < steps; i++) 
+        {
             x = (i+0.5)*step;
             tmp += 4.0 / (1.0+x*x); 
         }
