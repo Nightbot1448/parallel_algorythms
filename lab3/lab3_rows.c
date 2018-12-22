@@ -28,12 +28,13 @@ int main(int argc, char *argv[])
 	int shm_id;
 	shm_id = shmget( IPC_PRIVATE, size*(size+2)*sizeof(int), 0666 | IPC_CREAT | IPC_EXCL );
 	SHARED = (int *)shmat(shm_id, NULL, 0);
-	printf("Generating matrix and vector\n");
+	// printf("Generating matrix and vector\n");
 	generate(SHARED, size);
-	printf("Calculations\n");
-	for(int i=1; i <= count_of_proc; i++){
-		printf("Count of process: %d\n", i);
+	// printf("Calculations\n");
+	for(int i=1; i <= count_of_proc; i++)
+	{
 		clear_result_vector(SHARED, size);
+		printf("%d\n", i);
 		parrallel_calculate(SHARED, i, size);
 	}
 
@@ -99,7 +100,8 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		int status;
 		wait(&status);
 	}
-	printf("end of calculatoins\ntime of parrallel calculate: %lf\n", omp_get_wtime()-start);//result vector in file \'output.txt\'\n");
+	printf("%lf\n", omp_get_wtime()-start);
+	// printf("end of calculatoins\ntime of parrallel calculate: %lf\n", omp_get_wtime()-start);//result vector in file \'output.txt\'\n");
 	// FILE *fout = fopen("output.txt", "w");
 	// int res_shift = size*(size+1);
 	// for(int i=0; i<size; i++)

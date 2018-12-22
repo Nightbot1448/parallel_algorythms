@@ -3,9 +3,8 @@
 #include <math.h>
 #include <unistd.h>
 #include <sys/types.h>
-// #include <sys/ipc.h>
-// #include <sys/shm.h>
 #include <sys/wait.h>
+#include <omp.h>
 
 // void print_shared(double *mem, int size);
 void get_proc_and_op(int argc, char *argv[], int *count_of_proc, long *count_of_op);
@@ -17,11 +16,16 @@ int main(int argc, char *argv[])
 	int count_of_proc = 1;
 	long count_of_op = 1000000000, proc_op_count = 0;
 	get_proc_and_op(argc, argv, &count_of_proc, &count_of_op);
-	printf("count of proccess: %d\n", count_of_proc);
-	printf("count of operations: %ld\n", count_of_op);
-	proc_op_count = count_of_op / count_of_proc;
-	double pi = parrallel_calculate(count_of_proc, proc_op_count, count_of_op);
-	printf("pi number: %.12lf\nmath.pi:   %.12lf\ndiff: %.3e\n", pi, M_PI, fabs(pi-M_PI));
+	// printf("count of proccess: %d\n", count_of_proc);
+	// printf("count of operations: %ld\n", count_of_op);
+	// printf("%.12lf\n", M_PI);
+	for (int i=1; i<=count_of_proc; i++)
+	{
+		double start = omp_get_wtime();
+		proc_op_count = count_of_op / i;
+		double pi = parrallel_calculate(i, proc_op_count, count_of_op);
+		printf("%d %.3e %lf\n", i, fabs(pi-M_PI), omp_get_wtime() - start);
+	}
 	return 0;
 }
 
@@ -36,7 +40,7 @@ double parrallel_calculate(int count_of_proc, long proc_op_count, long count_of_
 	        return 1;
 	    }
 	}
-	int size = sizeof(int);
+	// int size = sizeof(int);
 	for (int i = 0; i < count_of_proc; i++)
 	{
 		pid_t pid = fork();
@@ -67,13 +71,14 @@ double parrallel_calculate(int count_of_proc, long proc_op_count, long count_of_
 	for (int i = 0; i < count_of_proc; i++)
 	{
 		int status;
-		wait(&status); // kids could be ready in any order
+		wait(&status);
 	}
 	double pi = 0;
 	for(int i=0; i < count_of_proc; i++)
 	{
 		double val = 0;
-		int n = read(arr_fd[i][0], &val, sizeof(val));
+		read(arr_fd[i][0], &val, sizeof(val));
+		// int n = 
 		pi += val;
 		// pi += SHARED[i];
 	}

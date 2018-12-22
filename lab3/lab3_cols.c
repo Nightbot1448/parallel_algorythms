@@ -74,6 +74,7 @@ void clear_result_ans_vector(int *SHARED, int size, int count_of_proc)
 void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 {
 	int cols_for_proc = size / count_of_proc;
+	printf("proc: %d\n", count_of_proc);
 	double start = omp_get_wtime();
 	for (int i = 0; i < count_of_proc; i++)
 	{
@@ -88,13 +89,13 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		}
 		else {
 			if (i != count_of_proc-1 ){
+				printf("\t%d %d %d\n", i, i*cols_for_proc, (i+1)*cols_for_proc);
 				multiply(SHARED, i*cols_for_proc, (i+1)*cols_for_proc, size, i);
-				printf("range: %d %d\n", i*cols_for_proc, (i+1)*cols_for_proc);
 			}
 			else
 			{
+				printf("\t%d %d %d\n", i, i*cols_for_proc, size);
 				multiply(SHARED, i*cols_for_proc, size, size, i);
-				printf("range: %d %d\n", i*cols_for_proc, size);
 			}
 			exit(EXIT_SUCCESS);
 		}
@@ -106,9 +107,9 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		wait(&status);
 	}
 	double end = omp_get_wtime();
+	printf("time of parrallel multiply: %lf\n", end-start);
 	int res_vec_shift = size*(size+1);
 	int tmp_vecs_shift = res_vec_shift + size;
-	printf("time of parrallel multiply: %lf\n", end-start);
 	start = omp_get_wtime();
 	for(int i=0; i<size; i++)
 	{
@@ -118,14 +119,15 @@ void parrallel_calculate(int *SHARED, int count_of_proc, int size)
 		}
 	}
 	end = omp_get_wtime();
-	printf("time of sum calculatoins: %lf\nend of calculatoins\n", end-start);
+	printf("end of calculatoins\n");//time of sum calculatoins: %lf\n, , end-start
 }
 
 void multiply(int *SHARED, int start_col, int last_col, int size, int num_of_proc)
 {
 	int vec_shift = size*size;
 	int tmp_vec_shift = vec_shift + size*(num_of_proc+1);
-	for(int i = start_col; i < last_col; i++){
+	for(int i = start_col; i < last_col; i++)
+	{
 		for(int j=0; j < size; j++)
 		{
 			SHARED[tmp_vec_shift + j] += SHARED[size*j + i]*SHARED[vec_shift+i];

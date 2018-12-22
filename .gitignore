@@ -4,6 +4,7 @@ mul*
 *.pdf
 *.txt
 lectures/
+venv
 # Prerequisites
 *.d
 

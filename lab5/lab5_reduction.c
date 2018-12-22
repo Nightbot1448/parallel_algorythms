@@ -20,10 +20,12 @@ int main(int argc, char const *argv[]) {
     step = 1/(double)steps;
     double time = omp_get_wtime();
     #pragma omp parallel for reduction(+:sum) private(x)
+    {
         for (i=0; i < steps; i++) {
             x = (i+0.5)*step;
             sum += 4.0 / (1.0+x*x); 
         }
+    }
     time = omp_get_wtime() - time;
     pi_num = step * sum;
     printf("PI = %.16g\ndiff: %.16g\ntime of parallel calc: %lf\n", pi_num, fabs(M_PI - pi_num), time);

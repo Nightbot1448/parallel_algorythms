@@ -33,15 +33,15 @@ int main(int argc, char *argv[])
 	parse_len(argc, argv, &len);
 	int *arr_for_parrallel = (int *)malloc(len*sizeof(int));
 	int *arr_for_consistent = (int *)malloc(len*sizeof(int));
-	printf("generating and cloning array\n");
+	// printf("generating and cloning array\n");
 	for(int i=0; i<len; i++)
 	{
 		arr_for_parrallel[i] = rand()%301-150;
 	}
 	memcpy(arr_for_consistent, arr_for_parrallel, len*sizeof(int));
-	printf("consistent calculating\n");
+	// printf("consistent calculating\n");
 	consistent_calc(arr_for_consistent, len);
-	printf("parallel calculating\n");
+	// printf("parallel calculating\n");
 	parallel_calc(arr_for_parrallel, len);
 	free(arr_for_parrallel);
 	free(arr_for_consistent);
@@ -77,7 +77,7 @@ void consistent_calc(int *arr, int len)
 {	
 	double time = omp_get_wtime();
 	qs(arr, 0, len-1);
-	printf("\tconsistent time: %lf\n", omp_get_wtime()-time);
+	printf("consistent time: %lf\n", omp_get_wtime()-time);
 	if (!check_sorted(arr, len))
 		printf("\nALARM!!!\nconsistent not sorted\n");
 }
@@ -184,7 +184,7 @@ void parallel_calc(int *arr, int len)
 				pthread_join(threads[j], NULL);
 		}
 	}
-	printf("\tparallel time:   %lf\n", omp_get_wtime()-time);
+	printf("parallel time:   %lf\n", omp_get_wtime()-time);
 	if (!check_sorted(arr, len))
 		printf("\nALARM!!!\nparallel not sorted\n");
 }
