@@ -2,7 +2,6 @@ task*
 mul*
 *.out
 *.pdf
-*.txt
 lectures/
 venv
 # Prerequisites
